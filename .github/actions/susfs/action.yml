@@ -87,3 +87,15 @@ runs:
       run: |
         cp ${{ github.workspace }}/kernel_patches/wild/ksun-0daf55582-susfs-v2.1.0-e259e7d6.patch ./
         patch -p1 < ksun-0daf55582-susfs-v2.1.0-e259e7d6.patch
+    - name: Fix SUSFS base.c reject
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/aosp
+      run: |
+        if grep -q "susfs_def.h" fs/proc/base.c; then
+          echo "susfs_def.h already present, skipping fix"
+        else
+          echo "Applying manual fix for fs/proc/base.c"
+          sed -i '/#include <linux\/dma-buf.h>/a #if defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)\n#include <linux\/susfs_def.h>\n#endif' \
+            fs/proc/base.c
+          echo "Fix applied"
+        fi
