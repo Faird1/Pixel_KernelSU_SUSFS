@@ -14,8 +14,34 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
       run: |
+        set -e
+        
         # Initialize repo with the target branch
-        repo init -u https://android.googlesource.com/kernel/manifest -b ${{inputs.repo }} --depth=1
+        echo "Initializing repo for branch: ${{ inputs.repo }}"
+        repo init -u https://android.googlesource.com/kernel/manifest -b ${{ inputs.repo }} --depth=1
         
         # Sync kernel source
+        echo "Syncing kernel source..."
         repo --trace sync -c -j$(nproc --all) --fail-fast --no-tags --force-sync --no-clone-bundle
+        
+        # Verify critical directories exist
+        KERNEL_DIR="$PWD/aosp"
+        
+        if [ ! -d "$KERNEL_DIR" ]; then
+          echo "ERROR: Kernel directory not found at $KERNEL_DIR"
+          echo "Contents of $(pwd):"
+          ls -la
+          exit 1
+        fi
+        
+        # Check for essential kernel directories
+        REQUIRED_DIRS=("fs" "include" "kernel" "arch")
+        for dir in "${REQUIRED_DIRS[@]}"; do
+          if [ ! -d "$KERNEL_DIR/$dir" ]; then
+            echo "WARNING: Expected directory not found: $KERNEL_DIR/$dir"
+          fi
+        done
+        
+        echo "✓ Kernel source synced successfully"
+        echo "Kernel directory: $KERNEL_DIR"
+        ls -la "$KERNEL_DIR" | head -20
